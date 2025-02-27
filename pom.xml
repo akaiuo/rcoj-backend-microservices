@@ -17,6 +17,7 @@
         <module>whoj-backend-judge-service</module>
         <module>whoj-backend-gateway</module>
         <module>whoj-backend-post-service</module>
+        <module>whoj-backend-validation-service</module>
     </modules>
     <properties>
         <java.version>17</java.version>

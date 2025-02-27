@@ -24,8 +24,8 @@ public class Post implements Serializable {
     private String tags;
     private Integer editorType;
     private Long userId;
-    private Integer thumbNum;
     private Integer favourNum;
+    private Integer starNum;
     private Integer commentNum;
     private Date createTime;
     private Date updateTime;

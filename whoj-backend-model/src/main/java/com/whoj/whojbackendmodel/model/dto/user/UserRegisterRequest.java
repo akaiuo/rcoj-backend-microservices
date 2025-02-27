@@ -1,8 +1,7 @@
 package com.whoj.whojbackendmodel.model.dto.user;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
-
-import java.io.Serializable;
 
 /**
  * 用户注册请求体
@@ -11,13 +10,16 @@ import java.io.Serializable;
  * @from <a href="https://yupi.icu">编程导航知识星球</a>
  */
 @Data
-public class UserRegisterRequest implements Serializable {
-
-    private static final long serialVersionUID = 3191241716373120793L;
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class UserRegisterRequest {
 
     private String userAccount;
 
     private String userPassword;
 
-    private String checkPassword;
+    private String userEmail;
+
+    private String validateCode;
+
+    private String sessionId;
 }

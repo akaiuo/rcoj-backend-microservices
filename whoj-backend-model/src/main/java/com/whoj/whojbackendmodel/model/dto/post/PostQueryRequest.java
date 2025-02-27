@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.whoj.whojbackcommon.common.PageRequest;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -28,7 +29,9 @@ public class PostQueryRequest extends PageRequest implements Serializable {
     /**
      * 创建时间区间
      */
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createAfter;
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createBefore;
 
     @TableField(exist = false)

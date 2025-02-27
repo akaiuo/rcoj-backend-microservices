@@ -13,7 +13,6 @@ import com.whoj.whojbackendmodel.model.entity.User;
 import com.whoj.whojbackendmodel.model.enums.UserRoleEnum;
 import com.whoj.whojbackendmodel.model.vo.LoginUserVO;
 import com.whoj.whojbackendmodel.model.vo.UserVO;
-import com.whoj.whojbackendserviceclient.service.UserFeignClient;
 import com.whoj.whojbackenduserservice.mapper.UserMapper;
 import com.whoj.whojbackenduserservice.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -46,20 +45,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public static final String SALT = "yupi";
 
     @Override
-    public long userRegister(String userAccount, String userPassword, String checkPassword) {
+    public long userRegister(String userAccount, String userPassword, String userEmail) {
         // 1. 校验
-        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
+        if (StringUtils.isAnyBlank(userAccount, userPassword, userEmail)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
         }
-        if (userAccount.length() < 4) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
+        if (userAccount.charAt(0) == ' ') {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户名首位不能为空格");
         }
-        if (userPassword.length() < 8 || checkPassword.length() < 8) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码过短");
+        if (userAccount.length() > 24) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户名过长");
         }
-        // 密码和校验密码相同
-        if (!userPassword.equals(checkPassword)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
+        if (userPassword.length() < 8) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码过短");
+        } else if (userPassword.length() > 30) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码过长");
         }
         synchronized (userAccount.intern()) {
             // 账户不能重复
@@ -67,7 +67,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             queryWrapper.eq("userAccount", userAccount);
             long count = this.baseMapper.selectCount(queryWrapper);
             if (count > 0) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号重复");
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户名重复");
             }
             // 2. 加密
             String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
@@ -75,6 +75,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             User user = new User();
             user.setUserAccount(userAccount);
             user.setUserPassword(encryptPassword);
+            user.setUserEmail(userEmail);
             boolean saveResult = this.save(user);
             if (!saveResult) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败，数据库错误");

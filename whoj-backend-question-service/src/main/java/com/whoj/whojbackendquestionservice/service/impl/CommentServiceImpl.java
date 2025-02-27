@@ -43,19 +43,28 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, QuestionComme
     @Override
     public List<CommentVO> getCommentVOS(List<QuestionComment> questionComments, HttpServletRequest request) {
         List<CommentVO> commentVOList = new ArrayList<>();
-        User loginUser = userFeignClient.getLoginUser(request);
+        User loginUser;
+        try {
+            loginUser = userFeignClient.getLoginUser(request);
+        }catch (BusinessException ignored) {
+            loginUser = null;
+        }
         QueryWrapper<QuestionCommentThumb> queryWrapper = new QueryWrapper<>();
         for (QuestionComment questionComment : questionComments) {
-            queryWrapper.eq("userId", loginUser.getId());
-            queryWrapper.eq("commentId", questionComment.getId());
-            QuestionCommentThumb questionCommentThumb = commentThumbMapper.selectOne(queryWrapper);
             CommentVO commentVO = new CommentVO();
             BeanUtils.copyProperties(questionComment, commentVO);
-            if (questionCommentThumb != null) {
-                commentVO.setHasThumb(1);
-            }else {
-                commentVO.setHasThumb(0);
+            // 查看当前登录用户是否点赞过该评论
+            if (loginUser != null) {
+                queryWrapper.eq("userId", loginUser.getId());
+                queryWrapper.eq("commentId", questionComment.getId());
+                QuestionCommentThumb questionCommentThumb = commentThumbMapper.selectOne(queryWrapper);
+                if (questionCommentThumb != null) {
+                    commentVO.setHasThumb(1);
+                } else {
+                    commentVO.setHasThumb(0);
+                }
             }
+            // 当前评论的用户信息
             commentVO.setUserVO(userFeignClient.getUserVO(userFeignClient.getById(questionComment.getUserId())));
             commentVOList.add(commentVO);
             queryWrapper.clear();

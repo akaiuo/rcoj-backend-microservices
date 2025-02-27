@@ -7,9 +7,8 @@ import com.whoj.whojbackcommon.common.ErrorCode;
 import com.whoj.whojbackcommon.exception.BusinessException;
 import com.whoj.whojbackendmodel.model.entity.*;
 import com.whoj.whojbackendmodel.model.vo.CommentVO;
-import com.whoj.whojbackendpostservice.mapper.CommentMapper;
+import com.whoj.whojbackendpostservice.mapper.*;
 import com.whoj.whojbackendpostservice.service.CommentService;
-import com.whoj.whojbackendpostservice.mapper.CommentThumbMapper;
 import com.whoj.whojbackendserviceclient.service.UserFeignClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -41,19 +40,28 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, PostComment> 
     @Override
     public List<CommentVO> getCommentVOS(List<PostComment> postComments, HttpServletRequest request) {
         List<CommentVO> commentVOList = new ArrayList<>();
-        User loginUser = userFeignClient.getLoginUser(request);
+        User loginUser;
+        try {
+            loginUser = userFeignClient.getLoginUser(request);
+        }catch (BusinessException ignored) {
+            loginUser = null;
+        }
         QueryWrapper<PostCommentThumb> queryWrapper = new QueryWrapper<>();
         for (PostComment postComment : postComments) {
-            queryWrapper.eq("userId", loginUser.getId());
-            queryWrapper.eq("commentId", postComment.getId());
-            PostCommentThumb postCommentThumb = commentThumbMapper.selectOne(queryWrapper);
             CommentVO commentVO = new CommentVO();
             BeanUtils.copyProperties(postComment, commentVO);
-            if (postCommentThumb != null) {
-                commentVO.setHasThumb(1);
-            }else {
-                commentVO.setHasThumb(0);
+            // 查看当前登录用户是否点赞过该评论
+            if (loginUser != null) {
+                queryWrapper.eq("userId", loginUser.getId());
+                queryWrapper.eq("commentId", postComment.getId());
+                PostCommentThumb postCommentThumb = commentThumbMapper.selectOne(queryWrapper);
+                if (postCommentThumb != null) {
+                    commentVO.setHasThumb(1);
+                }else {
+                    commentVO.setHasThumb(0);
+                }
             }
+            // 当前评论的用户信息
             commentVO.setUserVO(userFeignClient.getUserVO(userFeignClient.getById(postComment.getUserId())));
             commentVOList.add(commentVO);
             queryWrapper.clear();
@@ -140,5 +148,4 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, PostComment> 
             return true;
         }
     }
-
 }

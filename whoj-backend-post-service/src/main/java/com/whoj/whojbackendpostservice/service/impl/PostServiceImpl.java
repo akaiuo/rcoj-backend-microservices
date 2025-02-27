@@ -1,6 +1,8 @@
 package com.whoj.whojbackendpostservice.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,15 +12,21 @@ import com.whoj.whojbackcommon.exception.BusinessException;
 import com.whoj.whojbackcommon.utils.SqlUtils;
 import com.whoj.whojbackendmodel.model.dto.post.PostQueryRequest;
 import com.whoj.whojbackendmodel.model.entity.Post;
+import com.whoj.whojbackendmodel.model.entity.PostFavour;
+import com.whoj.whojbackendmodel.model.entity.PostStar;
 import com.whoj.whojbackendmodel.model.entity.User;
 import com.whoj.whojbackendmodel.model.vo.PostGetVO;
+import com.whoj.whojbackendmodel.model.vo.UserVO;
+import com.whoj.whojbackendpostservice.mapper.PostFavourMapper;
 import com.whoj.whojbackendpostservice.mapper.PostMapper;
+import com.whoj.whojbackendpostservice.mapper.PostStarMapper;
 import com.whoj.whojbackendpostservice.service.PostService;
 import com.whoj.whojbackendserviceclient.service.UserFeignClient;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +38,15 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
 
     @Resource
     private UserFeignClient userFeignClient;
+
+    @Resource
+    private PostMapper postMapper;
+
+    @Resource
+    private PostStarMapper postStarMapper;
+
+    @Resource
+    private PostFavourMapper postFavourMapper;
 
     @Override
     public void validPost(Post post) {
@@ -60,8 +77,46 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
     }
 
     @Override
+    public PostGetVO getPostGetVO(Post post, HttpServletRequest request) {
+        PostGetVO postGetVO = BeanUtil.copyProperties(post, PostGetVO.class);
+        postGetVO.setTags(JSONUtil.toList(post.getTags(), String.class));
+        User user = userFeignClient.getById(post.getUserId());
+        UserVO userVO = userFeignClient.getUserVO(user);
+        postGetVO.setUserVO(userVO);
+        postGetVO.setPreview(null);
+        // 当前用户是否点赞或收藏
+        User loginUser;
+        try {
+            loginUser = userFeignClient.getLoginUser(request);
+        }catch (BusinessException ignore) {
+            loginUser = null;
+        }
+        if (loginUser != null) {
+            QueryWrapper<PostFavour> postFavourQueryWrapper = new QueryWrapper<>();
+            postFavourQueryWrapper.eq("userId", loginUser.getId());
+            postFavourQueryWrapper.eq("postId", post.getId());
+            PostFavour postFavour = postFavourMapper.selectOne(postFavourQueryWrapper);
+            if (postFavour != null) {
+                postGetVO.setHasFavour(1);
+            }
+            QueryWrapper<PostStar> postStarQueryWrapper = new QueryWrapper<>();
+            postStarQueryWrapper.eq("userId", loginUser.getId());
+            postStarQueryWrapper.eq("postId", post.getId());
+            PostStar postStar = postStarMapper.selectOne(postStarQueryWrapper);
+            if (postStar != null) {
+                postGetVO.setHasStar(1);
+            }
+        }
+        return postGetVO;
+    }
+
+    @Override
     public QueryWrapper<Post> getQueryWrapper(PostQueryRequest postQueryRequest) {
         QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
+        if (postQueryRequest == null) {
+            return queryWrapper;
+        }
+
         Long id = postQueryRequest.getId();
         String title = postQueryRequest.getTitle();
         List<String> tags = postQueryRequest.getTags();
@@ -71,14 +126,14 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         String sortOrder = postQueryRequest.getSortOrder();
         queryWrapper.eq(id != null, "id", id);
         queryWrapper.like(StringUtils.isNotBlank(title), "title", title);
-        if (tags != null) {
+        if (CollUtil.isNotEmpty(tags)) {
             for (String tag : tags) {
                 queryWrapper.like("tags", "\"" + tag + "\"");
             }
         }
         queryWrapper.ge(createAfter != null, "createTime", createAfter);
         queryWrapper.le(createBefore != null, "createTime", createBefore);
-        queryWrapper.eq("isDelete", false);
+        queryWrapper.eq("isDelete", 0);
         queryWrapper.orderBy(SqlUtils.validSortField(sortField), sortOrder.equals(CommonConstant.SORT_ORDER_ASC),
                 sortField);
         return queryWrapper;
@@ -106,5 +161,119 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         }).toList();
         postGetVOPage.setRecords(postGetVOList);
         return postGetVOPage;
+    }
+
+    /**
+     * 帖子点赞
+     * @param postId
+     * @param request
+     * @return
+     */
+    @Override
+    public boolean favourPost(Long postId, HttpServletRequest request) {
+        QueryWrapper<PostFavour> queryWrapper = new QueryWrapper<>();
+        User loginUser = userFeignClient.getLoginUser(request);
+        queryWrapper.eq("userId", loginUser.getId());
+        queryWrapper.eq("postId", postId);
+        PostFavour postFavour = postFavourMapper.selectOne(queryWrapper);
+        if (postFavour != null) {
+            return false;
+        }
+        postFavour = PostFavour.builder()
+                .userId(loginUser.getId())
+                .postId(postId)
+                .build();
+        postFavourMapper.insert(postFavour);
+        // 帖子点赞数+1
+        Post post = postMapper.selectById(postId);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        post.setFavourNum(post.getFavourNum() + 1);
+        postMapper.updateById(post);
+        return true;
+    }
+
+    /**
+     * 取消帖子点赞
+     * @param postId
+     * @param request
+     * @return
+     */
+    @Override
+    public boolean cancelFavourPost(Long postId, HttpServletRequest request) {
+        QueryWrapper<PostFavour> queryWrapper = new QueryWrapper<>();
+        User loginUser = userFeignClient.getLoginUser(request);
+        queryWrapper.eq("userId", loginUser.getId());
+        queryWrapper.eq("postId", postId);
+        int i = postFavourMapper.delete(queryWrapper);
+        if (i == 0) {
+            return false;
+        }
+        // 评论点赞数-1
+        Post post = postMapper.selectById(postId);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        post.setFavourNum(post.getFavourNum() - 1);
+        postMapper.updateById(post);
+        return true;
+    }
+
+    /**
+     * 帖子收藏
+     * @param postId
+     * @param request
+     * @return
+     */
+    @Override
+    public boolean starPost(Long postId, HttpServletRequest request) {
+        QueryWrapper<PostStar> queryWrapper = new QueryWrapper<>();
+        User loginUser = userFeignClient.getLoginUser(request);
+        queryWrapper.eq("userId", loginUser.getId());
+        queryWrapper.eq("postId", postId);
+        PostStar postStar = postStarMapper.selectOne(queryWrapper);
+        if (postStar != null) {
+            return false;
+        }
+        postStar = PostStar.builder()
+                .userId(loginUser.getId())
+                .postId(postId)
+                .build();
+        postStarMapper.insert(postStar);
+        // 帖子点赞数+1
+        Post post = postMapper.selectById(postId);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        post.setStarNum(post.getStarNum() + 1);
+        postMapper.updateById(post);
+        return true;
+    }
+
+    /**
+     * 取消帖子收藏
+     * @param postId
+     * @param request
+     * @return
+     */
+    @Override
+    public boolean cancelStarPost(Long postId, HttpServletRequest request) {
+        QueryWrapper<PostStar> queryWrapper = new QueryWrapper<>();
+        User loginUser = userFeignClient.getLoginUser(request);
+        queryWrapper.eq("userId", loginUser.getId());
+        queryWrapper.eq("postId", postId);
+        int i = postStarMapper.delete(queryWrapper);
+        if (i == 0) {
+            return false;
+        }
+        // 评论点赞数-1
+        Post post = postMapper.selectById(postId);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        post.setStarNum(post.getStarNum() - 1);
+        postMapper.updateById(post);
+        return true;
     }
 }

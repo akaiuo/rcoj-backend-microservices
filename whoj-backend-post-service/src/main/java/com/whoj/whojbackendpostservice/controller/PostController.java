@@ -1,8 +1,8 @@
 package com.whoj.whojbackendpostservice.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.whoj.whojbackcommon.common.BaseResponse;
 import com.whoj.whojbackcommon.common.ErrorCode;
@@ -15,9 +15,9 @@ import com.whoj.whojbackendmodel.model.dto.comment.PostCommentAddRequest;
 import com.whoj.whojbackendmodel.model.entity.Post;
 import com.whoj.whojbackendmodel.model.entity.PostComment;
 import com.whoj.whojbackendmodel.model.entity.User;
+import com.whoj.whojbackendmodel.model.enums.UserRoleEnum;
 import com.whoj.whojbackendmodel.model.vo.CommentVO;
 import com.whoj.whojbackendmodel.model.vo.PostGetVO;
-import com.whoj.whojbackendmodel.model.vo.UserVO;
 import com.whoj.whojbackendpostservice.service.CommentService;
 import com.whoj.whojbackendpostservice.service.PostService;
 import com.whoj.whojbackendserviceclient.service.UserFeignClient;
@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/")
@@ -52,11 +53,15 @@ public class PostController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         Post post = BeanUtil.copyProperties(postAddRequest, Post.class);
+        List<String> tags = postAddRequest.getTags();
+        if (tags != null) {
+            post.setTags(JSONUtil.toJsonStr(tags));
+        }
         postService.validPost(post);
         User loginUser = userFeignClient.getLoginUser(request);
         post.setUserId(loginUser.getId());
         post.setFavourNum(0);
-        post.setThumbNum(0);
+        post.setStarNum(0);
         post.setCommentNum(0);
         boolean save = postService.save(post);
         if (!save) {
@@ -71,7 +76,7 @@ public class PostController {
      * @return
      */
     @GetMapping("/get")
-    public BaseResponse<PostGetVO> getPost(@RequestParam Long id) {
+    public BaseResponse<PostGetVO> getPost(@RequestParam Long id, HttpServletRequest request) {
         if (id == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -79,12 +84,7 @@ public class PostController {
         if (post == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
-        PostGetVO postGetVO = BeanUtil.copyProperties(post, PostGetVO.class);
-        User user = userFeignClient.getById(post.getUserId());
-        UserVO userVO = userFeignClient.getUserVO(user);
-        postGetVO.setUserVO(userVO);
-        postGetVO.setPreview(null);
-        return ResultUtils.success(postGetVO);
+        return ResultUtils.success(postService.getPostGetVO(post, request));
     }
 
     /**
@@ -139,7 +139,7 @@ public class PostController {
         List<CommentVO> commentVOS = commentService.getCommentVOS(commentPage.getRecords(), request);
         Page<CommentVO> commentVOPage = new Page<>();
         commentVOPage.setRecords(commentVOS);
-        commentVOPage.setTotal(commentVOS.size());
+        commentVOPage.setTotal(commentPage.getTotal());
         return ResultUtils.success(commentVOPage);
     }
 
@@ -172,7 +172,6 @@ public class PostController {
         postQueryRequest.setId(postCommentAddRequest.getPostId());
         QueryWrapper<Post> queryWrapper = postService.getQueryWrapper(postQueryRequest);
         Post post = postService.getOne(queryWrapper);
-        List<Post> list = postService.list(queryWrapper);
         if (post == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
@@ -187,6 +186,9 @@ public class PostController {
                 .build();
         boolean save = commentService.save(postComment);
         if (save) {
+            // 帖子评论数+1
+            post.setCommentNum(post.getCommentNum() + 1);
+            postService.updateById(post);
             return ResultUtils.success(postComment.getId());
         }else {
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
@@ -199,16 +201,58 @@ public class PostController {
      */
     @DeleteMapping("/comment/delete")
     public BaseResponse<Boolean> deleteComment(Long commentId, HttpServletRequest request) {
-        LambdaUpdateWrapper<PostComment> commentLambdaUpdateWrapper = new LambdaUpdateWrapper<>();
-        commentLambdaUpdateWrapper.eq(PostComment::getId, commentId);
-        commentLambdaUpdateWrapper.eq(PostComment::getUserId, userFeignClient.getLoginUser(request).getId());
-        commentLambdaUpdateWrapper.set(PostComment::getIsDelete, 1);
-        boolean update = commentService.update(commentLambdaUpdateWrapper);
-        if (update) {
-            return ResultUtils.success(true);
+        PostComment comment = commentService.getById(commentId);
+        User loginUser = userFeignClient.getLoginUser(request);
+        if (Objects.equals(loginUser.getId(), comment.getUserId()) || loginUser.getUserRole().equals(UserRoleEnum.ADMIN.getText())) {
+            // 可删除
+            boolean del = commentService.removeById(comment);
+            if (del) {
+                // 帖子评论数-1
+                Post post = postService.getById(comment.getPostId());
+                post.setCommentNum(post.getCommentNum() - 1);
+                postService.updateById(post);
+                return ResultUtils.success(true);
+            }else {
+                throw new BusinessException(ErrorCode.OPERATION_ERROR);
+            }
         }else {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR);
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
     }
 
+    /**
+     * 点赞帖子
+     * @return 是否完成操作
+     */
+    @PutMapping("/favour")
+    public BaseResponse<Boolean> favourPost(Long postId, HttpServletRequest request) {
+        return ResultUtils.success(postService.favourPost(postId, request));
+    }
+
+    /**
+     * 取消点赞帖子
+     * @return 是否完成操作
+     */
+    @PutMapping("/cancel/favour")
+    public BaseResponse<Boolean> cancelFavourPost(Long postId, HttpServletRequest request) {
+        return ResultUtils.success(postService.cancelFavourPost(postId, request));
+    }
+
+    /**
+     * 收藏帖子
+     * @return 是否完成操作
+     */
+    @PutMapping("/star")
+    public BaseResponse<Boolean> starPost(Long postId, HttpServletRequest request) {
+        return ResultUtils.success(postService.starPost(postId, request));
+    }
+
+    /**
+     * 取消收藏帖子
+     * @return 是否完成操作
+     */
+    @PutMapping("/cancel/star")
+    public BaseResponse<Boolean> cancelStarPost(Long postId, HttpServletRequest request) {
+        return ResultUtils.success(postService.cancelStarPost(postId, request));
+    }
 }

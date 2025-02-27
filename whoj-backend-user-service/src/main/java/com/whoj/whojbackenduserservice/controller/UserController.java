@@ -13,6 +13,7 @@ import com.whoj.whojbackendmodel.model.dto.user.*;
 import com.whoj.whojbackendmodel.model.entity.User;
 import com.whoj.whojbackendmodel.model.vo.LoginUserVO;
 import com.whoj.whojbackendmodel.model.vo.UserVO;
+import com.whoj.whojbackendserviceclient.service.ValidationFeignClient;
 import com.whoj.whojbackenduserservice.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -40,7 +41,27 @@ public class UserController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private ValidationFeignClient validationFeignClient;
+
     // region 登录相关
+
+    /**
+     * 获取注册验证码
+     *
+     * @param email 用户邮箱
+     * @param request
+     */
+    @GetMapping("/registerValidateCode")
+    public BaseResponse<String> registerValidateCode(String email, HttpServletRequest request){
+        UserRegisterRequest userRegisterRequest = new UserRegisterRequest();
+        userRegisterRequest.setUserEmail(email);
+        userRegisterRequest.setSessionId(request.getSession().getId());
+        if (validationFeignClient.registerSendCodeToMail(userRegisterRequest)) {
+            return ResultUtils.success("发送成功");
+        }
+        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "发送失败");
+    }
 
     /**
      * 用户注册
@@ -49,18 +70,23 @@ public class UserController {
      * @return
      */
     @PostMapping("/register")
-    public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
+    public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest, HttpServletRequest request) {
         if (userRegisterRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         String userAccount = userRegisterRequest.getUserAccount();
         String userPassword = userRegisterRequest.getUserPassword();
-        String checkPassword = userRegisterRequest.getCheckPassword();
-        if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
-            return null;
+        String userEmail = userRegisterRequest.getUserEmail();
+        userRegisterRequest.setSessionId(request.getSession().getId());
+        if (!validationFeignClient.validateCode(userRegisterRequest)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码错误");
+        }else {
+            if (StringUtils.isAnyBlank(userAccount, userPassword, userEmail)) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数错误");
+            }
+            long result = userService.userRegister(userAccount, userPassword, userEmail);
+            return ResultUtils.success(result);
         }
-        long result = userService.userRegister(userAccount, userPassword, checkPassword);
-        return ResultUtils.success(result);
     }
 
     /**

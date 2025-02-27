@@ -19,9 +19,11 @@ public class PostGetVO implements Serializable {
     private List<String> tags;
     private Integer editorType;
     private UserVO userVO;
-    private Integer thumbNum;
     private Integer favourNum;
+    private Integer starNum;
     private Integer commentNum;
+    private Integer hasFavour;
+    private Integer hasStar;
     private Date createTime;
     private Date updateTime;
     private Integer isDelete;
