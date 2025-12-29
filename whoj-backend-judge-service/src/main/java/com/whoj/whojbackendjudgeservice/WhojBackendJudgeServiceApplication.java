@@ -18,7 +18,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class WhojBackendJudgeServiceApplication {
 
     public static void main(String[] args) {
-        MqInitMain.doInit(); // 初始化消息队列
+        new MqInitMain().doInit(); // 初始化消息队列
         SpringApplication.run(WhojBackendJudgeServiceApplication.class, args);
     }
 

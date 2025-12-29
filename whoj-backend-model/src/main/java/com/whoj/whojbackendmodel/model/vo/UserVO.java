@@ -1,6 +1,9 @@
 package com.whoj.whojbackendmodel.model.vo;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -12,6 +15,9 @@ import java.util.Date;
  * @from <a href="https://yupi.icu">编程导航知识星球</a>
  */
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserVO implements Serializable {
 
     /**

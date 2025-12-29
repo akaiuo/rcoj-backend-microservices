@@ -27,4 +27,6 @@ public interface MailService {
      * @param filePath 附件路径
      */
     void sendAttachmentMailMessage(String to, String subject, String content, String filePath);
+
+    String validCodeHtml(String string, String title, int validCodeExpireMinutes);
 }

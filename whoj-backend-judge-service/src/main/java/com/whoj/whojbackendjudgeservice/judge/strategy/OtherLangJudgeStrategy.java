@@ -57,7 +57,7 @@ public class OtherLangJudgeStrategy implements JudgeStrategy {
                 continue;
             }
             //判断答案
-            if (!runOutputList.get(i).equals(output)) {
+            if (!equals(runOutputList.get(i), output)) {
                 message = JudgeInfoMessageEnum.WRONG_ANSWER.getText();
                 messageEnumSet.add(JudgeInfoMessageEnum.WRONG_ANSWER);
                 messageList.add(JudgeInfoMessageEnum.WRONG_ANSWER.getText());
@@ -75,5 +75,26 @@ public class OtherLangJudgeStrategy implements JudgeStrategy {
                 .judgeInfo(judgeInfo)
                 .messageList(messageList)
                 .build();
+    }
+
+    /**
+     * 不考虑最后的换行符，比较两个字符串
+     * @param s1 str1
+     * @param s2 str2
+     * @return 是否相同
+     */
+    private boolean equals(String s1, String s2) {
+        if (s1.charAt(s1.length() - 1) == s2.charAt(s2.length() - 1)) {
+            return s1.equals(s2);
+        }else {
+            if (s1.charAt(s1.length() - 1) == '\n') {
+                if (s1.length() > s2.length()) return s1.substring(0, s1.length() - 1).equals(s2);
+                else return false;
+            }else if (s2.charAt(s2.length() - 1) == '\n') {
+                if (s2.length() > s1.length()) return s2.substring(0, s2.length() - 1).equals(s1);
+                else return false;
+            }
+        }
+        return false;
     }
 }

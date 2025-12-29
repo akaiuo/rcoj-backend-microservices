@@ -35,7 +35,8 @@ public class ValidationController implements ValidationFeignClient {
             code.append(num.charAt((int) Math.floor(Math.random() * 34)));
         }
         try {
-            mailService.sendTextMailMessage(to, "RCOJ注册", "您在RCOJ进行注册账号，验证码为：" + code.toString() + "，10分钟内有效!");
+//            mailService.sendTextMailMessage(to, "RCOJ注册", "您在RCOJ进行注册账号，验证码为：" + code.toString() + "，10分钟内有效!");
+            mailService.sendHtmlMailMessage(to, "RCOJ注册", mailService.validCodeHtml(code.toString(), "RCOJ注册验证码", 10));
             redisService.set(sessionId + to, code.toString(), 600);
         }catch (Exception e) {
             log.error(e.getMessage());
@@ -50,7 +51,6 @@ public class ValidationController implements ValidationFeignClient {
         String to = userRegisterRequest.getUserEmail();
         String code = userRegisterRequest.getValidateCode();
         String sessionId = userRegisterRequest.getSessionId();
-
         return code.equals(redisService.get(sessionId + to));
     }
 }

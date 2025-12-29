@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Resource;
 
 @Component
-@Slf4j
 public class MessageConsumer {
 
     @Resource
@@ -22,7 +21,6 @@ public class MessageConsumer {
     @SneakyThrows
     @RabbitListener(queues = {"code_queue"}, ackMode = "MANUAL")
     public void receive(String message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
-        log.info("Received message: {}", message);
         try {
             long questionSubmitId = Long.parseLong(message);
             judgeService.doJudge(questionSubmitId);

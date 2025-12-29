@@ -12,6 +12,8 @@ import com.whoj.whojbackendmodel.model.entity.*;
 import com.whoj.whojbackendmodel.model.enums.LangEnum;
 import com.whoj.whojbackendmodel.model.enums.QuestionSubmitStatusEnum;
 import com.whoj.whojbackendmodel.model.vo.QuestionSubmitVO;
+import com.whoj.whojbackendmodel.model.vo.QuestionVO;
+import com.whoj.whojbackendmodel.model.vo.UserVO;
 import com.whoj.whojbackendquestionservice.mapper.*;
 import com.whoj.whojbackendquestionservice.message.MessageProducer;
 import com.whoj.whojbackendquestionservice.service.QuestionService;
@@ -19,8 +21,10 @@ import com.whoj.whojbackendquestionservice.service.QuestionSubmitService;
 import com.whoj.whojbackendserviceclient.service.*;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.List;
@@ -33,6 +37,7 @@ import java.util.concurrent.CompletableFuture;
 * @createDate 2024-09-04 17:02:33
 */
 @Service
+@Transactional
 public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper, QuestionSubmit>
     implements QuestionSubmitService {
 
@@ -145,6 +150,16 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
             questionSubmitVO.setJudgeInfoDetail(null);
             return questionSubmitVO;
         }).toList();
+        //todo user and question info for submit table
+        for (QuestionSubmitVO questionSubmitVO: questionSubmitVOList) {
+            Question question = questionService.getById(questionSubmitVO.getQuestionId());
+            QuestionVO questionVO = QuestionVO.builder().title(question.getTitle()).build();
+            questionSubmitVO.setQuestionVO(questionVO);
+            User user = userFeignClient.getById(questionSubmitVO.getUserId());
+            UserVO userVO = new UserVO();
+            BeanUtils.copyProperties(user, userVO);
+            questionSubmitVO.setUserVO(userVO);
+        }
         questionSubmitVOPage.setRecords(questionSubmitVOList);
         return questionSubmitVOPage;
     }

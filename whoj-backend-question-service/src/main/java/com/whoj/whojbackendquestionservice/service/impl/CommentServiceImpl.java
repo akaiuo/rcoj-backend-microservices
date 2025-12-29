@@ -15,6 +15,7 @@ import com.whoj.whojbackendquestionservice.service.CommentService;
 import com.whoj.whojbackendserviceclient.service.UserFeignClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@Transactional
 public class CommentServiceImpl extends ServiceImpl<CommentMapper, QuestionComment> implements CommentService {
 
     /**

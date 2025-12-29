@@ -24,9 +24,12 @@ public class RemoteCodeSandbox implements CodeSandbox {
     @Value(value = "${codeSandbox.secret}")
     private String AUTH_REQUEST_SECRET = "secretKey";
 
+    @Value(value = "${codeSandbox.url}")
+    private String CODE_SANDBOX_URL = "192.168.136.131:8082"; // todo 获取不到配置文件中的配置
+
     @Override
     public ExecuteCodeResponse executeCode(ExecuteCodeRequest executeCodeRequest) {
-        String url = "localhost:8082/executeCode";
+        String url = CODE_SANDBOX_URL + "/executeCode";
         if (!executeCodeRequest.getLang().equals(LangEnum.CPP.getText()) || !executeCodeRequest.getLang().equals(LangEnum.C.getText())) {
             executeCodeRequest.setTime(executeCodeRequest.getTime() * 2); // 两倍给时
         }

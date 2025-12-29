@@ -3,7 +3,10 @@ package com.whoj.whojbackendmodel.model.vo;
 import cn.hutool.json.JSONUtil;
 import com.whoj.whojbackendmodel.model.dto.question.JudgeConf;
 import com.whoj.whojbackendmodel.model.entity.Question;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
@@ -15,6 +18,9 @@ import java.util.List;
  */
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class QuestionVO implements Serializable {
     /**
      * id

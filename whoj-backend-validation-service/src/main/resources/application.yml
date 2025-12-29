@@ -1,7 +1,9 @@
 # 公共配置文件
+# @author <a href="https://github.com/liyupi">程序员鱼皮</a>
+# @from <a href="https://yupi.icu">编程导航知识星球</a>
 spring:
   application:
-    name: whoj-backend-post-service
+    name: whoj-backend-validation-service
   # 默认 dev 环境
   profiles:
     active: dev
@@ -19,13 +21,13 @@ spring:
   # todo 需替换配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3307/whoj?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://mysql:3307/whoj
     username: root
-    password: 123456
-  # Redis 配置
-  # todo 需替换配置，然后取消注释
+    password: "123456"
+    # Redis 配置
+    # todo 需替换配置，然后取消注释
   redis:
-    database: 2
+    database: 3
     host: localhost
     port: 6379
     timeout: 5000
@@ -40,15 +42,40 @@ spring:
       discovery:
         server-addr: localhost:8848
   rabbitmq:
-    host: rabbitmq
+    host: localhost
     port: 5672
     password: guest
     username: guest
+  mail:
+    #发送邮件
+    protocol: smtp
+    # 配置 SMTP 服务器地址
+    host: smtp.qq.com
+    # 发送者邮箱
+    username: akaiuo@foxmail.com
+    # 授权码
+    password: cnmjliddaqwjibgj
+    # 端口号465或587
+    port: 465
+    # 默认的邮件编码为UTF-8
+    default-encoding: UTF-8
+    properties:
+      mail:
+        #配置SSL 加密工厂
+        smtp:
+          ssl:
+            #本地测试，先放开ssl
+            enable: true
+            required: false
+          #开启debug模式，这样邮件发送过程的日志会在控制台打印出来，方便排查错误
+        debug: true
+        socketFactory:
+          class: javax.net.ssl.SSLSocketFactory
 server:
   address: 0.0.0.0
-  port: 8105
+  port: 8106
   servlet:
-    context-path: /api/post
+    context-path: /api/validation
     # cookie 30 天过期
     session:
       cookie:
@@ -63,5 +90,8 @@ mybatis-plus:
       logic-delete-field: isDelete # 全局逻辑删除的实体字段名
       logic-delete-value: 1 # 逻辑已删除值（默认为 1）
       logic-not-delete-value: 0 # 逻辑未删除值（默认为 0）
+codeSandbox:
+  type: remote
+  secret: secretKey
 knife4j:
   enable: true

@@ -138,4 +138,70 @@ public class MailServiceImpl implements MailService {
             System.out.println("发送邮件失败："+e.getMessage());
         }
     }
+
+    public String validCodeHtml(String code, String title, int validCodeExpireMinutes) {
+        String text = "<!DOCTYPE html>\n" +
+                "<html>\n" +
+                "<head>\n" +
+                "    <meta charset=\"utf-8\">\n" +
+                "    <title>" + title + "</title>\n" +
+                "    <style type=\"text/css\">\n" +
+                "        /* 内联样式确保邮件客户端兼容性 */\n" +
+                "        .container {\n" +
+                "            max-width: 600px;\n" +
+                "            margin: 0 auto;\n" +
+                "            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;\n" +
+                "            line-height: 1.6;\n" +
+                "            color: #444;\n" +
+                "        }\n" +
+                "        .content {\n" +
+                "            padding: 30px 20px;\n" +
+                "            background: #ffffff;\n" +
+                "        }\n" +
+                "        .code-box {\n" +
+                "            font-size: 32px;\n" +
+                "            letter-spacing: 10px;\n" +
+                "            padding: 20px;\n" +
+                "            background: #f8f9fa;\n" +
+                "            text-align: center;\n" +
+                "            margin: 25px 0;\n" +
+                "            border-radius: 8px;\n" +
+                "            color: #2d3436;\n" +
+                "        }\n" +
+                "        .footer {\n" +
+                "            padding: 5px;\n" +
+                "            text-align: center;\n" +
+                "            color: #6c757d;\n" +
+                "            font-size: 12px;\n" +
+                "            background: #f8f9fa;\n" +
+                "        }\n" +
+                "    </style>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "<div class=\"container\">\n" +
+                "\n" +
+                "    <div class=\"content\">\n" +
+                "\n" +
+                "        <p>您正在尝试登录/注册，请输入以下验证码：</p>\n" +
+                "        <p>You are trying to log in or register, so please enter the following verification code to continue：</p>\n" +
+                "\n" +
+                "        <div class=\"code-box\">\n" +
+                "            " + code + "\n" +
+                "        </div>\n" +
+                "\n" +
+                "        <p style=\"color: #6c757d;\">该验证码 <strong>" + validCodeExpireMinutes + "分钟</strong> 内有效，请勿泄露给他人</p>\n" +
+                "        <p style=\"color: #6c757d;\">This verification code is valid for <strong>" + validCodeExpireMinutes + " minutes</strong>, do not share it with anyone</p>\n" +
+                "    </div>\n" +
+                "\n" +
+                "    <div class=\"footer\">\n" +
+                "        <p>©2025 RCOJ保留所有权利 All rights reserved</p>\n" +
+                "    </div>\n" +
+                "</div>\n" +
+                "</body>\n" +
+                "</html>\n";
+
+
+
+        return text;
+    }
 }

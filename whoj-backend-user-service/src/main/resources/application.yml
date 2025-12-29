@@ -1,6 +1,4 @@
-# 公共配置文件
-# @author <a href="https://github.com/liyupi">程序员鱼皮</a>
-# @from <a href="https://yupi.icu">编程导航知识星球</a>
+# 上线配置
 spring:
   application:
     name: whoj-backend-user-service
@@ -21,16 +19,16 @@ spring:
   # todo 需替换配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3307/whoj
+    url: jdbc:mysql://localhost:3307/whoj?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: 123456
   # Redis 配置
   # todo 需替换配置，然后取消注释
-    redis:
-      database: 2
-      host: localhost
-      port: 6379
-      timeout: 5000
+  redis:
+    database: 2
+    host: localhost
+    port: 6379
+    timeout: 5000
 #      password: 123456
   # 文件上传
   servlet:
@@ -40,7 +38,7 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8848
+        server-addr: localhost:8848
 server:
   address: 0.0.0.0
   port: 8102
