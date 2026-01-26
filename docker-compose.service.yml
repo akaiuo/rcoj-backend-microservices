@@ -1,0 +1,78 @@
+version: '3'
+services:
+  whoj-backend-gateway:
+    container_name: whoj-backend-gateway
+    build: # 服务的 Docker 构建文件位置
+      context: ./whoj-backend-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8101:8101"
+    networks:
+      - mynetwork
+  whoj-backend-user-service:
+    container_name: whoj-backend-user-service
+    build:
+      context: ./whoj-backend-user-service
+      dockerfile: Dockerfile
+    ports:
+      - "8102:8102"
+    networks:
+      - mynetwork
+    depends_on: # 本服务依赖的服务，控制启动先后顺序
+      - whoj-backend-gateway
+
+  whoj-backend-question-service:
+    container_name: whoj-backend-question-service
+    build:
+      context: ./whoj-backend-question-service
+      dockerfile: Dockerfile
+    ports:
+      - "8103:8103"
+    networks:
+      - mynetwork
+    depends_on:
+      - whoj-backend-user-service
+      - whoj-backend-gateway
+
+  whoj-backend-judge-service:
+    container_name: whoj-backend-judge-service
+    build:
+      context: ./whoj-backend-judge-service
+      dockerfile: Dockerfile
+    ports:
+      - "8104:8104"
+    networks:
+      - mynetwork
+    depends_on:
+      - whoj-backend-user-service
+      - whoj-backend-question-service
+      - whoj-backend-gateway
+
+  whoj-backend-post-service:
+    container_name: whoj-backend-post-service
+    build:
+      context: ./whoj-backend-post-service
+      dockerfile: Dockerfile
+    ports:
+      - "8105:8105"
+    networks:
+      - mynetwork
+    depends_on:
+      - whoj-backend-user-service
+      - whoj-backend-gateway
+
+  whoj-backend-validation-service:
+    container_name: whoj-backend-validation-service
+    build:
+      context: ./whoj-backend-validation-service
+      dockerfile: Dockerfile
+    ports:
+      - "8106:8106"
+    networks:
+      - mynetwork
+    depends_on:
+      - whoj-backend-user-service
+      - whoj-backend-gateway
+# 网络，不定义的话就是默认网络
+networks:
+  mynetwork:

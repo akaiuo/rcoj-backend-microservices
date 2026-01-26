@@ -42,6 +42,14 @@ public interface UserFeignClient {
     List<User> listByIds(@RequestParam("ids") Collection<Long> ids);
 
     /**
+     * 根据用户名获取用户信息
+     * @param userName
+     * @return
+     */
+    @GetMapping("/get/name")
+    User getByName(@RequestParam("userName") String userName);
+
+    /**
      * 若功能比较简单（比如不涉及数据库操作）或参数传递复杂，可直接实现该方法，无需远程调用
      */
 

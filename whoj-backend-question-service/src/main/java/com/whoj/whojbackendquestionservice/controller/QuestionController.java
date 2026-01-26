@@ -343,6 +343,9 @@ public class QuestionController {
     public BaseResponse<Page<QuestionSubmitVO>> listQuestionSubmitVoByPage(@RequestBody QuestionSubmitQueryRequest questionSubmitQueryRequest, HttpServletRequest request) {
         long current = questionSubmitQueryRequest.getCurrent();
         long size = questionSubmitQueryRequest.getPageSize();
+        if (questionSubmitQueryRequest.getUser() == null){
+            questionSubmitQueryRequest.setUser("");
+        }
         // 从数据库里中查询原始的题目提交分页信息
         Page<QuestionSubmit> questionSubmitPage = questionSubmitService.page(new Page<>(current, size),
                 questionSubmitService.getQueryWrapper(questionSubmitQueryRequest)); // 这里用于过滤

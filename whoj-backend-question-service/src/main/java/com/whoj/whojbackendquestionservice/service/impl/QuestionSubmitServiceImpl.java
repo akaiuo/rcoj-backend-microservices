@@ -101,15 +101,20 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
 
         String lang = questionSubmitSubmitQueryRequest.getLang();
         Integer status = questionSubmitSubmitQueryRequest.getStatus();
-        Long questionId = questionSubmitSubmitQueryRequest.getQuestionId();
-        Long userId = questionSubmitSubmitQueryRequest.getUserId();
+        String questionId = questionSubmitSubmitQueryRequest.getQuestionId();
+        String user = questionSubmitSubmitQueryRequest.getUser();
         String sortField = questionSubmitSubmitQueryRequest.getSortField();
         String sortOrder = questionSubmitSubmitQueryRequest.getSortOrder();
 
+        User byName = userFeignClient.getByName(user); // 用户id转用户实例
+        if (byName != null) {
+            queryWrapper.eq(byName.getId() != null,"userId", byName.getId()); // 查到的用户id
+        }else {
+            queryWrapper.eq("userId", user); // 用户id
+        }
         // 拼接查询条件
-        queryWrapper.like(StringUtils.isNotBlank(lang), "lang", lang);
-        queryWrapper.like(!ObjectUtils.isEmpty(userId), "userId", userId);
-        queryWrapper.like(!ObjectUtils.isEmpty(questionId), "questionId", questionId);
+        queryWrapper.eq(StringUtils.isNotBlank(lang), "lang", lang);
+        queryWrapper.eq(StringUtils.isNoneBlank(questionId), "questionId", questionId);
         queryWrapper.like(QuestionSubmitStatusEnum.getEnumByValue(status) != null, "status", status);
         queryWrapper.orderBy(SqlUtils.validSortField(sortField), sortOrder.equals(CommonConstant.SORT_ORDER_ASC),
                 sortField);
@@ -150,7 +155,6 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
             questionSubmitVO.setJudgeInfoDetail(null);
             return questionSubmitVO;
         }).toList();
-        //todo user and question info for submit table
         for (QuestionSubmitVO questionSubmitVO: questionSubmitVOList) {
             Question question = questionService.getById(questionSubmitVO.getQuestionId());
             QuestionVO questionVO = QuestionVO.builder().title(question.getTitle()).build();

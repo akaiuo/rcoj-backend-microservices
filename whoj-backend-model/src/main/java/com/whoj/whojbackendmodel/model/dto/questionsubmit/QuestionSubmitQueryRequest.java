@@ -20,14 +20,14 @@ public class QuestionSubmitQueryRequest extends PageRequest implements Serializa
     private Integer status;
 
     /**
-     * 题目 id
+     * 题目id
      */
-    private Long questionId;
+    private String questionId;
 
     /**
-     * 用户id
+     * 用户id 或 用户名
      */
-    private Long userId;
+    private String user;
 
     private static final long serialVersionUID = 1L;
 }

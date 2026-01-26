@@ -8,9 +8,9 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
     <artifactId>whoj-backend-judge-service</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>whoj-backend-judge-service</name>
-    <description>whoj-backend-judge-service</description>
+        <version>0.0.1-SNAPSHOT</version>
+        <name>whoj-backend-judge-service</name>
+        <description>whoj-backend-judge-service</description>
     <url/>
     <licenses>
         <license/>
