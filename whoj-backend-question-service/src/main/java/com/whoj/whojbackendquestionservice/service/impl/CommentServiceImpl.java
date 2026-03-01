@@ -26,13 +26,6 @@ import java.util.List;
 @Transactional
 public class CommentServiceImpl extends ServiceImpl<CommentMapper, QuestionComment> implements CommentService {
 
-    /**
-     * 获取评论列表（VO）
-     *
-     * @param comments
-     * @return
-     */
-
     @Resource
     CommentThumbMapper commentThumbMapper;
 
@@ -42,6 +35,13 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, QuestionComme
     @Resource
     private CommentMapper commentMapper;
 
+    /**
+     * 获取评论列表（VO）
+     *
+     * @param questionComments
+     * @param request
+     * @return
+     */
     @Override
     public List<CommentVO> getCommentVOS(List<QuestionComment> questionComments, HttpServletRequest request) {
         List<CommentVO> commentVOList = new ArrayList<>();
@@ -86,7 +86,6 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, QuestionComme
         queryWrapper.eq("questionId", questionId);
         return queryWrapper;
     }
-
 
     /**
      * 点赞评论
@@ -153,5 +152,4 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, QuestionComme
             return true;
         }
     }
-
 }

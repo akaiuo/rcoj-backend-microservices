@@ -12,15 +12,17 @@ import com.whoj.whojbackendmodel.model.dto.comment.PostCommentQueryRequest;
 import com.whoj.whojbackendmodel.model.dto.post.PostAddRequest;
 import com.whoj.whojbackendmodel.model.dto.post.PostQueryRequest;
 import com.whoj.whojbackendmodel.model.dto.comment.PostCommentAddRequest;
-import com.whoj.whojbackendmodel.model.entity.Post;
-import com.whoj.whojbackendmodel.model.entity.PostComment;
-import com.whoj.whojbackendmodel.model.entity.User;
+import com.whoj.whojbackendmodel.model.dto.post.SolutionPageQueryRequest;
+import com.whoj.whojbackendmodel.model.entity.*;
 import com.whoj.whojbackendmodel.model.enums.UserRoleEnum;
 import com.whoj.whojbackendmodel.model.vo.CommentVO;
 import com.whoj.whojbackendmodel.model.vo.PostGetVO;
 import com.whoj.whojbackendpostservice.service.CommentService;
 import com.whoj.whojbackendpostservice.service.PostService;
+import com.whoj.whojbackendpostservice.service.SolutionService;
+import com.whoj.whojbackendserviceclient.service.QuestionFeignClient;
 import com.whoj.whojbackendserviceclient.service.UserFeignClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -41,9 +43,14 @@ public class PostController {
     @Resource
     private CommentService commentService;
 
+    @Resource
+    private SolutionService solutionService;
+    @Autowired
+    private QuestionFeignClient questionFeignClient;
+
     /**
-     * 创建帖子
-     * @param postAddRequest 参数
+     * 创建帖子(questionId==null) / 题解(questionId!=null)
+     * @param postAddRequest 参数，若questionId不为null则为题解
      * @param request 帖子id
      * @return
      */
@@ -52,6 +59,14 @@ public class PostController {
         if (postAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        if (postAddRequest.getQuestionId() != null) {
+            // 题目是否存在
+            Question questionById = questionFeignClient.getQuestionById(postAddRequest.getQuestionId());
+            if (questionById == null) {
+                throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "题目未找到");
+            }
+        }
+
         Post post = BeanUtil.copyProperties(postAddRequest, Post.class);
         List<String> tags = postAddRequest.getTags();
         if (tags != null) {
@@ -63,10 +78,19 @@ public class PostController {
         post.setFavourNum(0);
         post.setStarNum(0);
         post.setCommentNum(0);
-        boolean save = postService.save(post);
+        boolean save = postService.save(post); // 这行执行后post中的id变为数据库自增的id
         if (!save) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "添加失败，请联系管理员！");
         }
+
+        if (postAddRequest.getQuestionId() != null) {
+            QuestionSolutionPost solutionPost = QuestionSolutionPost.builder().postId(post.getId()).questionId(postAddRequest.getQuestionId()).build();
+            boolean solutionSave = solutionService.save(solutionPost);
+            if (!solutionSave) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "添加失败，请联系管理员！");
+            }
+        }
+
         return ResultUtils.success(post.getId());
     }
 
@@ -254,5 +278,18 @@ public class PostController {
     @PutMapping("/cancel/star")
     public BaseResponse<Boolean> cancelStarPost(Long postId, HttpServletRequest request) {
         return ResultUtils.success(postService.cancelStarPost(postId, request));
+    }
+
+    /**
+     * 根据题目id列出题解
+     * @param solutionPageQueryRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/solution/list/page/vo")
+    public BaseResponse<Page<PostGetVO>> getSolutionList(@RequestBody SolutionPageQueryRequest solutionPageQueryRequest, HttpServletRequest request) {
+        Page<QuestionSolutionPost> questionSolutionPostPage = new Page<>(solutionPageQueryRequest.getCurrent(), solutionPageQueryRequest.getPageSize());
+        Page<PostGetVO> pagePostVo = solutionService.getPagePostVo(solutionPageQueryRequest.getQuestionId(), questionSolutionPostPage);
+        return ResultUtils.success(pagePostVo);
     }
 }

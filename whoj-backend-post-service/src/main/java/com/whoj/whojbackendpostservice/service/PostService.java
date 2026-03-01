@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.whoj.whojbackendmodel.model.dto.post.PostQueryRequest;
 import com.whoj.whojbackendmodel.model.entity.Post;
+import com.whoj.whojbackendmodel.model.entity.QuestionSolutionPost;
 import com.whoj.whojbackendmodel.model.vo.PostGetVO;
 
 import javax.servlet.http.HttpServletRequest;
@@ -27,7 +28,7 @@ public interface PostService extends IService<Post> {
     PostGetVO getPostGetVO(Post post, HttpServletRequest request);
 
     /**
-     * 获取帖子分页VO
+     * 获取帖子分页VO 脱敏
      * @param postPage
      * @return
      */
@@ -40,4 +41,6 @@ public interface PostService extends IService<Post> {
     public boolean starPost(Long postId, HttpServletRequest request);
 
     public boolean cancelStarPost(Long postId, HttpServletRequest request);
+
+    public Page<PostGetVO> getPostSolutionVOPage(Page<QuestionSolutionPost> solutionPostPage);
 }

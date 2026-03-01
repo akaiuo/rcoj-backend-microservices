@@ -1,16 +1,21 @@
 package com.whoj.whojbackendquestionservice.service.impl;
 
+import cn.hutool.http.HttpUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.whoj.whojbackcommon.common.BaseResponse;
 import com.whoj.whojbackcommon.common.ErrorCode;
 import com.whoj.whojbackcommon.constant.CommonConstant;
 import com.whoj.whojbackcommon.exception.*;
 import com.whoj.whojbackcommon.utils.SqlUtils;
+import com.whoj.whojbackendmodel.model.ai.ErrorAIAnalysisRequest;
 import com.whoj.whojbackendmodel.model.dto.questionsubmit.*;
 import com.whoj.whojbackendmodel.model.entity.*;
 import com.whoj.whojbackendmodel.model.enums.LangEnum;
 import com.whoj.whojbackendmodel.model.enums.QuestionSubmitStatusEnum;
+import com.whoj.whojbackendmodel.model.enums.UserRoleEnum;
 import com.whoj.whojbackendmodel.model.vo.QuestionSubmitVO;
 import com.whoj.whojbackendmodel.model.vo.QuestionVO;
 import com.whoj.whojbackendmodel.model.vo.UserVO;
@@ -22,14 +27,24 @@ import com.whoj.whojbackendserviceclient.service.*;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
 * @author admin
@@ -108,8 +123,8 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
 
         User byName = userFeignClient.getByName(user); // 用户id转用户实例
         if (byName != null) {
-            queryWrapper.eq(byName.getId() != null,"userId", byName.getId()); // 查到的用户id
-        }else {
+            queryWrapper.eq(byName.getId() != null, "userId", byName.getId()); // 查到的用户id
+        } else {
             queryWrapper.eq("userId", user); // 用户id
         }
         // 拼接查询条件
@@ -123,8 +138,9 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
 
     /**
      * 根据提交id获取提交的详细信息，包括代码、每个用例的时间、内存、报错
+     *
      * @param questionSubmit 包含题目提交id的对象
-     * @param loginUser 当前登录的用户 （判断是否为该题提交者或管理员）
+     * @param loginUser      当前登录的用户 （判断是否为该题提交者或管理员）
      * @return 题目提交详细判题信息
      */
     @Override
@@ -138,6 +154,7 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
 
     /**
      * 分页获取题目提交列表，可查看所有人的判题信息，不能查看代码及详细判题信息
+     *
      * @param questionSubmitPage 查询到的分页数据
      * @return 脱敏结果
      */
@@ -155,7 +172,7 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
             questionSubmitVO.setJudgeInfoDetail(null);
             return questionSubmitVO;
         }).toList();
-        for (QuestionSubmitVO questionSubmitVO: questionSubmitVOList) {
+        for (QuestionSubmitVO questionSubmitVO : questionSubmitVOList) {
             Question question = questionService.getById(questionSubmitVO.getQuestionId());
             QuestionVO questionVO = QuestionVO.builder().title(question.getTitle()).build();
             questionSubmitVO.setQuestionVO(questionVO);
@@ -168,4 +185,42 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
         return questionSubmitVOPage;
     }
 
+    @Value(value = "${ai.secret}")
+    private String AUTH_REQUEST_SECRET;
+
+    @Value(value = "${ai.url}")
+    private String CODE_SANDBOX_URL;
+
+
+    private static final WebClient webClient = WebClient.create();
+
+    public Flux<String> errorAIAnalysis (long questionSubmitId, User user) {
+        QuestionSubmit questionSubmit = this.getById(questionSubmitId);
+        if (questionSubmit == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "未找到");
+        }
+        if (user.getUserRole().equals(UserRoleEnum.ADMIN.getValue()) && !questionSubmit.getUserId().equals(user.getId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_ERROR, "无权限");
+        }
+        ErrorAIAnalysisRequest errorAIAnalysisRequest = ErrorAIAnalysisRequest.builder()
+                .errMsg(questionSubmit.getExecuteMessage())
+                .code(questionSubmit.getCode())
+                .build();
+        String json = JSONUtil.toJsonStr(errorAIAnalysisRequest);
+
+
+        Consumer<HttpHeaders> consumer = httpHeaders -> {
+            httpHeaders.set("authKey", AUTH_REQUEST_SECRET);
+        };
+        // 发送请求
+        return webClient.post()
+                .uri(CODE_SANDBOX_URL)
+                .contentType(MediaType.APPLICATION_JSON) // 声明请求体为 JSON
+                .headers(consumer)
+                .bodyValue(json) // 传递 JSON 请求体
+                .acceptCharset(StandardCharsets.UTF_8)
+                .accept(MediaType.TEXT_EVENT_STREAM)
+                .retrieve()
+                .bodyToFlux(String.class);
+    }
 }

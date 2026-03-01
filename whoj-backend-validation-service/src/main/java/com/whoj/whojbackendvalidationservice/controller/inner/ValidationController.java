@@ -29,6 +29,7 @@ public class ValidationController implements ValidationFeignClient {
         if (StringUtils.isAnyBlank(to, sessionId)) {
             return false;
         }
+        // 生成验证码
         StringBuilder code = new StringBuilder();
         String num = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         for (int i = 0; i < 5; i++) {

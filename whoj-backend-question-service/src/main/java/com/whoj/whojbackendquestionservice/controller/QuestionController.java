@@ -21,6 +21,7 @@ import com.whoj.whojbackendmodel.model.entity.QuestionComment;
 import com.whoj.whojbackendmodel.model.entity.Question;
 import com.whoj.whojbackendmodel.model.entity.QuestionSubmit;
 import com.whoj.whojbackendmodel.model.entity.User;
+import com.whoj.whojbackendmodel.model.enums.UserRoleEnum;
 import com.whoj.whojbackendmodel.model.vo.CommentVO;
 import com.whoj.whojbackendmodel.model.vo.QuestionSubmitVO;
 import com.whoj.whojbackendmodel.model.vo.QuestionVO;
@@ -30,11 +31,19 @@ import com.whoj.whojbackendquestionservice.service.QuestionSubmitService;
 import com.whoj.whojbackendserviceclient.service.UserFeignClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
+
+import static cn.hutool.core.lang.Console.log;
 
 /**
  * 题目接口
@@ -368,7 +377,7 @@ public class QuestionController {
         List<CommentVO> commentVOS = commentService.getCommentVOS(commentPage.getRecords(), request);
         Page<CommentVO> commentVOPage = new Page<>();
         commentVOPage.setRecords(commentVOS);
-        commentVOPage.setTotal(commentVOS.size());
+        commentVOPage.setTotal(commentPage.getTotal());
         return ResultUtils.success(commentVOPage);
     }
 
@@ -437,5 +446,60 @@ public class QuestionController {
         }else {
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
         }
+    }
+    @GetMapping(value = "/errorAnswerAIAnalysisStream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> errorAnswerAIAnalysisStream(Long questionSubmitId, HttpServletRequest request, HttpServletResponse response) {
+        if (questionSubmitId == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = userFeignClient.getLoginUser(request);
+        Flux<String> stringFlux = questionSubmitService.errorAIAnalysis(questionSubmitId, user);
+        /**
+        stringFlux.doOnNext(str -> System.out.println("收到流式数据：" + str)) // 每收到一条数据就处理
+            .doOnComplete(() -> System.out.println("流式数据接收完毕")) // 全部接收完成后执行
+            .subscribe();
+        // 模拟流式数据：每1秒返回一条，共5条（模拟调用外部接口返回的 Flux<String>）
+        return Flux.just("第一条数据", "第二条数据", "第三条数据", "第四条数据", "第五条数据")
+                .delayElements(Duration.ofSeconds(1)) // 模拟异步流式返回
+                .onErrorResume(e -> Flux.just("出错了：" + e.getMessage())); // 异常兜底
+        **/
+        response.setHeader("Content-Type", "text/event-stream");
+        response.setHeader("Cache-Control", "no-cache, no-transform");
+        response.setHeader("Connection", "keep-alive");
+        response.setHeader("Transfer-Encoding", "chunked");
+        response.setContentType(MediaType.TEXT_EVENT_STREAM_VALUE);
+        System.out.println(111);
+//        stringFlux.doOnNext(str -> System.out.print(str) ).subscribe();
+        return stringFlux.map(data -> {
+            data = data.replace("\n", "#n");
+            return data;
+        });
+    }
+
+    @GetMapping(value = "/errorAnswerAIAnalysisStreamSSE", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> errorAnswerAIAnalysisStreamSSE(Long questionSubmitId, HttpServletRequest request, HttpServletResponse response) {
+        if (questionSubmitId == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = userFeignClient.getLoginUser(request);
+        Flux<String> stringFlux = questionSubmitService.errorAIAnalysis(questionSubmitId, user);
+        response.setHeader("Content-Type", "text/event-stream");
+        response.setHeader("Cache-Control", "no-cache, no-transform");
+        response.setHeader("Connection", "keep-alive");
+        response.setHeader("Transfer-Encoding", "chunked");
+        response.setContentType(MediaType.TEXT_EVENT_STREAM_VALUE);
+        return stringFlux.map(data -> ServerSentEvent.builder(data).build());
+    }
+
+    @GetMapping(value = "/errorAnswerAIAnalysis", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public BaseResponse<String> errorAnswerAIAnalysis(Long questionSubmitId, HttpServletRequest request) {
+        if (questionSubmitId == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = userFeignClient.getLoginUser(request);
+        Flux<String> stringFlux = questionSubmitService.errorAIAnalysis(questionSubmitId, user);
+        final String[] ans = {""};
+        stringFlux.toStream().forEach(str -> ans[0] += str);
+        return ResultUtils.success(ans[0]);
     }
 }

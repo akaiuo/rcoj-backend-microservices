@@ -8,6 +8,7 @@ import com.whoj.whojbackendmodel.model.dto.questionsubmit.QuestionSubmitQueryReq
 import com.whoj.whojbackendmodel.model.entity.QuestionSubmit;
 import com.whoj.whojbackendmodel.model.entity.User;
 import com.whoj.whojbackendmodel.model.vo.QuestionSubmitVO;
+import reactor.core.publisher.Flux;
 
 /**
 * @author admin
@@ -53,4 +54,11 @@ public interface QuestionSubmitService extends IService<QuestionSubmit> {
      */
     Page<QuestionSubmitVO> getQuestionSubmitVOPage(Page<QuestionSubmit> questionSubmitPage);
 
+    /**
+     * AI执行错误分析
+     * @param questionSubmitId
+     * @param user
+     * @return
+     */
+    public Flux<String> errorAIAnalysis (long questionSubmitId, User user);
 }

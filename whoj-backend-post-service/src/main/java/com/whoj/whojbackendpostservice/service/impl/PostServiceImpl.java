@@ -11,10 +11,7 @@ import com.whoj.whojbackcommon.constant.CommonConstant;
 import com.whoj.whojbackcommon.exception.BusinessException;
 import com.whoj.whojbackcommon.utils.SqlUtils;
 import com.whoj.whojbackendmodel.model.dto.post.PostQueryRequest;
-import com.whoj.whojbackendmodel.model.entity.Post;
-import com.whoj.whojbackendmodel.model.entity.PostFavour;
-import com.whoj.whojbackendmodel.model.entity.PostStar;
-import com.whoj.whojbackendmodel.model.entity.User;
+import com.whoj.whojbackendmodel.model.entity.*;
 import com.whoj.whojbackendmodel.model.vo.PostGetVO;
 import com.whoj.whojbackendmodel.model.vo.UserVO;
 import com.whoj.whojbackendpostservice.mapper.PostFavourMapper;
@@ -27,10 +24,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -270,10 +264,30 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         // 评论点赞数-1
         Post post = postMapper.selectById(postId);
         if (post == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
-        }
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);        }
         post.setStarNum(post.getStarNum() - 1);
         postMapper.updateById(post);
         return true;
+    }
+
+    /**
+     * 问题id（Page） -> 帖子id -> 帖子Vo（List） -> 帖子Vo（Page）
+     * @param solutionPostPage
+     * @return
+     */
+    @Override
+    public Page<PostGetVO> getPostSolutionVOPage(Page<QuestionSolutionPost> solutionPostPage) {
+        Page<Post> postPage = new Page<>(solutionPostPage.getCurrent(), solutionPostPage.getSize());
+        List<Post> postList = new ArrayList<>();
+        // 根据分页中的各条帖子对应id，查出每条帖子
+        solutionPostPage.getRecords().forEach(questionSolutionPost -> {
+            Post post = postMapper.selectById(questionSolutionPost.getPostId());
+            if (post != null) {
+                postList.add(post);
+            }
+        });
+        postPage.setRecords(postList);
+        postPage.setTotal(postList.size());
+        return getPostSubmitVOPage(postPage);
     }
 }
