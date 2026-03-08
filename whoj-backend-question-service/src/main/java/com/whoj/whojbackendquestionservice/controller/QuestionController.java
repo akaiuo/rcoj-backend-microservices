@@ -447,6 +447,14 @@ public class QuestionController {
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
         }
     }
+
+    /**
+     * AI分析编译错误的代码
+     * @param questionSubmitId 提交id
+     * @param request
+     * @param response
+     * @return AI流式响应
+     */
     @GetMapping(value = "/errorAnswerAIAnalysisStream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> errorAnswerAIAnalysisStream(Long questionSubmitId, HttpServletRequest request, HttpServletResponse response) {
         if (questionSubmitId == null) {
@@ -469,37 +477,6 @@ public class QuestionController {
         response.setHeader("Transfer-Encoding", "chunked");
         response.setContentType(MediaType.TEXT_EVENT_STREAM_VALUE);
         System.out.println(111);
-//        stringFlux.doOnNext(str -> System.out.print(str) ).subscribe();
-        return stringFlux.map(data -> {
-            data = data.replace("\n", "#n");
-            return data;
-        });
-    }
-
-    @GetMapping(value = "/errorAnswerAIAnalysisStreamSSE", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<String>> errorAnswerAIAnalysisStreamSSE(Long questionSubmitId, HttpServletRequest request, HttpServletResponse response) {
-        if (questionSubmitId == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        User user = userFeignClient.getLoginUser(request);
-        Flux<String> stringFlux = questionSubmitService.errorAIAnalysis(questionSubmitId, user);
-        response.setHeader("Content-Type", "text/event-stream");
-        response.setHeader("Cache-Control", "no-cache, no-transform");
-        response.setHeader("Connection", "keep-alive");
-        response.setHeader("Transfer-Encoding", "chunked");
-        response.setContentType(MediaType.TEXT_EVENT_STREAM_VALUE);
-        return stringFlux.map(data -> ServerSentEvent.builder(data).build());
-    }
-
-    @GetMapping(value = "/errorAnswerAIAnalysis", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public BaseResponse<String> errorAnswerAIAnalysis(Long questionSubmitId, HttpServletRequest request) {
-        if (questionSubmitId == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        User user = userFeignClient.getLoginUser(request);
-        Flux<String> stringFlux = questionSubmitService.errorAIAnalysis(questionSubmitId, user);
-        final String[] ans = {""};
-        stringFlux.toStream().forEach(str -> ans[0] += str);
-        return ResultUtils.success(ans[0]);
+        return stringFlux;
     }
 }
