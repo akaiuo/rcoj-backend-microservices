@@ -2,6 +2,8 @@ package com.whoj.whojbackendquestionservice.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.whoj.whojbackcommon.common.ErrorCode;
@@ -19,6 +21,7 @@ import com.whoj.whojbackendquestionservice.service.QuestionService;
 import com.whoj.whojbackendserviceclient.service.UserFeignClient;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,14 +39,16 @@ import java.util.stream.Collectors;
 */
 @Service
 @Transactional
-public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
-    implements QuestionService {
+public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> implements QuestionService {
 
     @Resource
     private UserFeignClient userFeignClient;
+    @Autowired
+    private QuestionMapper questionMapper;
 
     /**
      * 校验题目是否合法
+     *
      * @param question
      * @param add
      */
@@ -162,6 +167,22 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
         return questionVOPage;
     }
 
+    /**
+     * 更新提交数量与通过数量
+     * @param questionId
+     * @param accept
+     */
+    @Override
+    public void updateQuestionAccepted(Long questionId, boolean accept) {
+        Question question = questionMapper.selectById(questionId);
+        LambdaUpdateWrapper<Question> updateWrapper = new LambdaUpdateWrapper();
+        updateWrapper.eq(Question::getId, questionId);
+        updateWrapper.set(Question::getSubmitNum, question.getSubmitNum() + 1);
+        if (accept) {
+            updateWrapper.set(Question::getAcceptNum, question.getAcceptNum() + 1);
+        }
+        this.update(updateWrapper);
+    }
 }
 
 

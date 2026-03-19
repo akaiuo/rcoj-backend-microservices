@@ -1,5 +1,6 @@
 package com.whoj.whojbackendquestionservice;
 
+import com.whoj.whojbackendquestionservice.message.MqInitMain;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -19,6 +20,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class WhojBackendQuestionServiceApplication {
 
     public static void main(String[] args) {
+        new MqInitMain().doInit(); // 初始化消息队列
         SpringApplication.run(WhojBackendQuestionServiceApplication.class, args);
     }
 

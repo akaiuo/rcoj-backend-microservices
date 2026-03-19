@@ -49,4 +49,11 @@ public interface QuestionService extends IService<Question> {
      * @return
      */
     Page<QuestionVO> getQuestionVOPage(Page<Question> questionPage, HttpServletRequest request);
+
+    /**
+     * 更新题目通过情况
+     * @param questionId
+     * @param accept
+     */
+    void updateQuestionAccepted(Long questionId, boolean accept);
 }

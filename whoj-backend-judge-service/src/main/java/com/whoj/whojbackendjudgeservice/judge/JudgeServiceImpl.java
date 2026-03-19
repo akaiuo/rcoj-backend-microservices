@@ -10,6 +10,7 @@ import com.whoj.whojbackendjudgeservice.judge.codeSandbox.enums.ExecuteStateEnum
 import com.whoj.whojbackendjudgeservice.judge.codeSandbox.model.ExecuteCodeRequest;
 import com.whoj.whojbackendjudgeservice.judge.codeSandbox.model.ExecuteCodeResponse;
 import com.whoj.whojbackendjudgeservice.judge.strategy.JudgeContext;
+import com.whoj.whojbackendjudgeservice.message.MessageProducer;
 import com.whoj.whojbackendmodel.model.codesandbox.JudgeInfo;
 import com.whoj.whojbackendmodel.model.dto.question.JudgeCase;
 import com.whoj.whojbackendmodel.model.dto.question.JudgeConf;
@@ -18,6 +19,7 @@ import com.whoj.whojbackendmodel.model.entity.Question;
 import com.whoj.whojbackendmodel.model.entity.QuestionSubmit;
 import com.whoj.whojbackendmodel.model.enums.JudgeInfoMessageEnum;
 import com.whoj.whojbackendmodel.model.enums.QuestionSubmitStatusEnum;
+import com.whoj.whojbackendmodel.model.message.JudgeSubmit;
 import com.whoj.whojbackendserviceclient.service.QuestionFeignClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,9 @@ public class JudgeServiceImpl implements JudgeService {
 
     @Resource
     private JudgeManager judgeManager;
+
+    @Resource
+    private MessageProducer messageProducer;
 
     @Value("${codeSandbox.type:example}")
     private String type;
@@ -119,6 +124,8 @@ public class JudgeServiceImpl implements JudgeService {
         isUpdate = questionFeignClient.updateQuestionSubmitById(update);
         if (!isUpdate)
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "题目状态更新错误");
+        JudgeSubmit judgeSubmit = new JudgeSubmit(questionId, doJudge.getJudgeInfo().getMessage().equals(JudgeInfoMessageEnum.ACCEPTED.getText()));
+        messageProducer.sendMessage("code_exchange", "my_routingKey", JSONUtil.toJsonStr(judgeSubmit));
         return questionFeignClient.getQuestionSubmitById(questionSubmitId);
     }
 }

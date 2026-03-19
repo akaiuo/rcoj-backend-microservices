@@ -1,7 +1,9 @@
-package com.whoj.whojbackendjudgeservice.message;
+package com.whoj.whojbackendquestionservice.message;
 
+import cn.hutool.json.JSONUtil;
 import com.rabbitmq.client.Channel;
-import com.whoj.whojbackendjudgeservice.judge.JudgeService;
+import com.whoj.whojbackendmodel.model.message.JudgeSubmit;
+import com.whoj.whojbackendquestionservice.service.QuestionService;
 import lombok.SneakyThrows;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
@@ -10,19 +12,20 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 
+
 @Component
 public class MessageConsumer {
 
     @Resource
-    private JudgeService judgeService;
+    private QuestionService questionService;
 
     // 指定程序监听的消息队列和确认机制
     @SneakyThrows
-    @RabbitListener(queues = {"code_queue"}, ackMode = "MANUAL")
+    @RabbitListener(queues = {"judge_queue"}, ackMode = "MANUAL")
     public void receive(String message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
         try {
-            long questionSubmitId = Long.parseLong(message);
-            judgeService.doJudge(questionSubmitId);
+            JudgeSubmit judgeSubmit = JSONUtil.toBean(message, JudgeSubmit.class);
+            questionService.updateQuestionAccepted(judgeSubmit.getQuestionId(), judgeSubmit.getIsAccepted());
             channel.basicAck(deliveryTag, false);
         }catch (Exception e) {
             channel.basicNack(deliveryTag, false, true);
